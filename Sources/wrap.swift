@@ -13,7 +13,7 @@
  - SeeAlso: Promise.init(resolvers:)
 */
 public func wrap<T>(_ body: (@escaping (T?, Error?) -> Void) throws -> Void) -> Promise<T> {
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         try body { obj, err in
             if let err = err {
                 reject(err)
@@ -28,7 +28,7 @@ public func wrap<T>(_ body: (@escaping (T?, Error?) -> Void) throws -> Void) -> 
 
 /// For completion-handlers that eg. provide an enum or an error.
 public func wrap<T>(_ body: (@escaping (T, Error?) -> Void) throws -> Void) -> Promise<T>  {
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         try body { obj, err in
             if let err = err {
                 reject(err)
@@ -41,7 +41,7 @@ public func wrap<T>(_ body: (@escaping (T, Error?) -> Void) throws -> Void) -> P
 
 /// Some APIs unwisely invert the Cocoa standard for completion-handlers.
 public func wrap<T>(_ body: (@escaping (Error?, T?) -> Void) throws -> Void) -> Promise<T> {
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         try body { err, obj in
             if let err = err {
                 reject(err)
@@ -56,7 +56,7 @@ public func wrap<T>(_ body: (@escaping (Error?, T?) -> Void) throws -> Void) -> 
 
 /// For completion-handlers with just an optional Error
 public func wrap(_ body: (@escaping (Error?) -> Void) throws -> Void) -> Promise<Void> {
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         try body { error in
             if let error = error {
                 reject(error)
@@ -69,7 +69,7 @@ public func wrap(_ body: (@escaping (Error?) -> Void) throws -> Void) -> Promise
 
 /// For completions that cannot error.
 public func wrap<T>(_ body: (@escaping (T) -> Void) throws -> Void) -> Promise<T> {
-    return Promise { fulfill, _ in
+    return Promise { fulfill, _, _ in
         try body(fulfill)
     }
 }

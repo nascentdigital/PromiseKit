@@ -19,6 +19,9 @@ import func Foundation.NSLog
  */
 open class Promise<T> {
     let state: State<T>
+    // TODO: Figure out how to preserve these accross promises
+    var progressHandlers:[(Any)->Void] = []
+    var lastProgress:Any? = nil
 
     /**
      Create a new, pending promise.
@@ -47,7 +50,7 @@ open class Promise<T> {
      - SeeAlso: http://promisekit.org/docs/cookbook/wrapping-delegation/
      - SeeAlso: pending()
      */
-    required public init(resolvers: (_ fulfill: @escaping (T) -> Void, _ reject: @escaping (Error) -> Void) throws -> Void) {
+    required public init(resolvers: (_ fulfill: @escaping (T) -> Void, _ reject: @escaping (Error) -> Void, _ progress: @escaping (Any) -> Void) throws -> Void) {
         var resolve: ((Resolution<T>) -> Void)!
         do {
             state = UnsealedState(resolver: &resolve)
@@ -61,7 +64,15 @@ open class Promise<T> {
                 #else
                     resolve(Resolution(error))
                 #endif
-            })
+                },
+                { value in
+                    self.lastProgress = value
+                    for handler in self.progressHandlers {
+                        contain_zalgo(.default) {
+                            handler (value)
+                        }
+                    }
+                })
         } catch {
             resolve(Resolution(error))
         }
@@ -103,7 +114,7 @@ open class Promise<T> {
 
      - SeeAlso: pending()
      */
-    public typealias PendingTuple = (promise: Promise, fulfill: (T) -> Void, reject: (Error) -> Void)
+    public typealias PendingTuple = (promise: Promise, fulfill: (T) -> Void, reject: (Error) -> Void, progress: (Any) -> Void)
 
     /**
      Making promises that wrap asynchronous delegation systems or other larger asynchronous systems without a simple completion handler is easier with pending.
@@ -128,8 +139,9 @@ open class Promise<T> {
     public final class func pending() -> PendingTuple {
         var fulfill: ((T) -> Void)!
         var reject: ((Error) -> Void)!
-        let promise = self.init { fulfill = $0; reject = $1 }
-        return (promise, fulfill, reject)
+        var progress: ((Any) -> Void)!
+        let promise = self.init { fulfill = $0; reject = $1; progress = $2 }
+        return (promise, fulfill, reject, progress)
     }
 
     /**
@@ -248,6 +260,17 @@ open class Promise<T> {
     @discardableResult
     public func `catch`(on q: DispatchQueue = .default, policy: CatchPolicy = .allErrorsExceptCancellation, execute body: @escaping (Error) -> Void) -> Promise {
         state.catch(on: q, policy: policy, else: { _ in }, execute: body)
+        return self
+    }
+    
+    
+    public func progress(on q: DispatchQueue = .default, execute body: @escaping (Any) -> Void) -> Promise<T> {
+        progressHandlers.append(body)
+        if self.lastProgress != nil {
+            contain_zalgo(.default) {
+                body(self.lastProgress!)
+            }
+        }
         return self
     }
 

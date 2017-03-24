@@ -239,7 +239,7 @@ public func when<T>(resolved promises: [Promise<T>]) -> Promise<[Result<T>]> {
     var countdown = promises.count
     let barrier = DispatchQueue(label: "org.promisekit.barrier.join", attributes: .concurrent)
 
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         for promise in promises {
             promise.state.pipe { resolution in
                 if case .rejected(_, let token) = resolution {

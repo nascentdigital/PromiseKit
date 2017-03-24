@@ -37,7 +37,7 @@ public func join<T>(_ promises: [Promise<T>]) -> Promise<[T]> {
     let barrier = DispatchQueue(label: "org.promisekit.barrier.join", attributes: .concurrent)
     var rejected = false
 
-    return Promise { fulfill, reject in
+    return Promise { fulfill, reject, _ in
         for promise in promises {
             promise.state.pipe { resolution in
                 barrier.sync(flags: .barrier) {
