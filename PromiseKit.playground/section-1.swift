@@ -21,16 +21,12 @@ import PromiseKit
 //    print(error)
 //}
 
-print("step 0")
 Promise<Int> { globalFulfill, globalReject, globalProgress in
-    print("step 1")
     Promise<Int> { fulfill, _, progress in
         DispatchQueue.main.async {
-            print("step 2")
             for c in 0 ..< 10 {
                 progress(c)
             }
-            print("step 3")
             fulfill(10)
         }
     }
@@ -38,7 +34,6 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
         globalProgress(value)
     }
     .then { value in
-        print("step 4")
         return Promise<Int> { fulfill, _, progress in
             DispatchQueue.main.async {
                 for c in 0 ..< 10 {
@@ -59,7 +54,7 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
     }
 }
 .progress { value in
-    print(value)
+    print(value as! Int + 1)
 }
 .catch { error in
 }
