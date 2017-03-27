@@ -19,7 +19,6 @@ import func Foundation.NSLog
  */
 open class Promise<T> {
     let state: State<T>
-    // TODO: Figure out how to preserve these accross promises
     var progressHandlers:[(Any)->Void] = []
     var lastProgress:Any? = nil
 
@@ -27,11 +26,15 @@ open class Promise<T> {
      Create a new, pending promise.
 
          func fetchAvatar(user: String) -> Promise<UIImage> {
-             return Promise { fulfill, reject in
+             return Promise { fulfill, reject, progress in
                  MyWebHelper.GET("\(user)/avatar") { data, err in
+                     progress(0)
                      guard let data = data else { return reject(err) }
+                     progress(33)
                      guard let img = UIImage(data: data) else { return reject(MyError.InvalidImage) }
+                     progress(66)
                      guard let img.size.width > 0 else { return reject(MyError.ImageTooSmall) }
+                     progress(100)
                      fulfill(img)
                  }
              }
@@ -40,6 +43,7 @@ open class Promise<T> {
      - Parameter resolvers: The provided closure is called immediately on the active thread; commence your asynchronous task, calling either fulfill or reject when it completes.
      - Parameter fulfill: Fulfills this promise with the provided value.
      - Parameter reject: Rejects this promise with the provided error.
+     - Parameter progress: Reports progress for this promise with the provided value.
 
      - Returns: A new promise.
 
@@ -120,9 +124,12 @@ open class Promise<T> {
      Making promises that wrap asynchronous delegation systems or other larger asynchronous systems without a simple completion handler is easier with pending.
 
          class Foo: BarDelegate {
-             let (promise, fulfill, reject) = Promise<Int>.pending()
+             let (promise, fulfill, reject, progress) = Promise<Int>.pending()
     
              func barDidFinishWithResult(result: Int) {
+                 progress(0)
+                 // Do work..
+                 progress(100)
                  fulfill(result)
              }
     
@@ -135,6 +142,7 @@ open class Promise<T> {
        1) A promise
        2) A function that fulfills that promise
        3) A function that rejects that promise
+       4) A function that provides progress on that promise
      */
     public final class func pending() -> PendingTuple {
         var fulfill: ((T) -> Void)!
@@ -263,12 +271,38 @@ open class Promise<T> {
         return self
     }
     
-    
+    /**
+     The provided closure executes when this promise reports progress.
+     
+     Reporting progress applies to only the immediate promise and does not
+     pass on to further chained promises. Thus you will typically place your
+     progress handler immediately following a given promise. This prevents
+     confusion as to where the progress comes from whn placed in a promise
+     chain containing more than one promise which reports progress.
+     
+     - Parameter on: The queue to which the provided closure dispatches.
+     - Parameter execute: The handler to execute if this promise reports progress.
+     - Returns: `self`
+     - Important: The promise that is returned is `self`. `progress` does not affect the chain
+     */
     public func progress(on q: DispatchQueue = .default, execute body: @escaping (Any) -> Void) -> Promise<T> {
+        // append handler to list of handlers
         progressHandlers.append(body)
         if self.lastProgress != nil {
             contain_zalgo(.default) {
                 body(self.lastProgress!)
+            }
+        }
+        return self
+    }
+    
+    /// This variant of `progress` allows for the proactive declaration of the type expected to be provided when progress is reported.
+    public func progress<P>(on q: DispatchQueue = .default, execute body: @escaping (P) -> Void) -> Promise<T> {
+        // append handler to list of handlers
+        progressHandlers.append({ body($0 as! P) })
+        if self.lastProgress != nil {
+            contain_zalgo(.default) {
+                body(self.lastProgress as! P)
             }
         }
         return self

@@ -30,8 +30,8 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
             fulfill(10)
         }
     }
-    .progress { value in
-        globalProgress(value)
+    .progress { (value:Int) in
+        globalProgress(value.description)
     }
     .then { value in
         return Promise<Int> { fulfill, _, progress in
@@ -42,8 +42,8 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
                 fulfill(value + 10)
             }
         }
-        .progress { value in
-            globalProgress(value)
+        .progress { (value:Any) in
+            globalProgress((value as! Int).description)
         }
     }
     .then { value in
@@ -53,8 +53,8 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
         globalReject(error)
     }
 }
-.progress { value in
-    print(value as! Int + 1)
+.progress { (value:String) in
+    print(Int(value)! + 1)
 }
 .catch { error in
 }
