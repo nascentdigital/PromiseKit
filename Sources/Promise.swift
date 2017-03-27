@@ -81,6 +81,52 @@ open class Promise<T> {
             resolve(Resolution(error))
         }
     }
+    /**
+     Create a new, pending promise.
+
+         func fetchAvatar(user: String) -> Promise<UIImage> {
+             return Promise { fulfill, reject in
+                 MyWebHelper.GET("\(user)/avatar") { data, err in
+                     guard let data = data else { return reject(err) }
+                     guard let img = UIImage(data: data) else { return reject(MyError.InvalidImage) }
+                     guard let img.size.width > 0 else { return reject(MyError.ImageTooSmall) }
+                     fulfill(img)
+                 }
+             }
+         }
+
+     - Parameter resolvers: The provided closure is called immediately on the active thread; commence your asynchronous task, calling either fulfill or reject when it completes.
+     - Parameter fulfill: Fulfills this promise with the provided value.
+     - Parameter reject: Rejects this promise with the provided error.
+
+     - Returns: A new promise.
+
+     - Note: If you are wrapping a delegate-based system, we recommend
+     to use instead: `Promise.pending()`
+
+     - SeeAlso: http://promisekit.org/docs/sealing-promises/
+     - SeeAlso: http://promisekit.org/docs/cookbook/wrapping-delegation/
+     - SeeAlso: pending()
+     */
+    required public init(resolvers: (_ fulfill: @escaping (T) -> Void, _ reject: @escaping (Error) -> Void) throws -> Void) {
+        var resolve: ((Resolution<T>) -> Void)!
+        do {
+            state = UnsealedState(resolver: &resolve)
+            try resolvers({ resolve(.fulfilled($0)) }, { error in
+                #if !PMKDisableWarnings
+                    if self.isPending {
+                        resolve(Resolution(error))
+                    } else {
+                        NSLog("PromiseKit: warning: reject called on already rejected Promise: \(error)")
+                    }
+                #else
+                    resolve(Resolution(error))
+                #endif
+                })
+        } catch {
+            resolve(Resolution(error))
+        }
+    }
 
     /**
      Create an already fulfilled promise.

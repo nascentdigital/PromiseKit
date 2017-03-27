@@ -59,6 +59,7 @@ Promise<Int> { globalFulfill, globalReject, globalProgress in
 .catch { error in
 }
 
+Promise<Int> { fulfill, reject in }.catch { error in }
 
 //firstly {
 //    Promise(value: 1)
